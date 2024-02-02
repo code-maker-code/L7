@@ -1,7 +1,8 @@
-import { IAttributeAndElements, IRenderOptions } from '@antv/l7-core';
+import type { IAttributeAndElements, IRenderOptions } from '@antv/l7-core';
 import BaseLayer from '../core/BaseLayer';
-import { IHeatMapLayerStyleOptions } from '../core/interface';
-import HeatMapModels, { HeatMapModelType } from './models';
+import type { IHeatMapLayerStyleOptions } from '../core/interface';
+import type { HeatMapModelType } from './models';
+import HeatMapModels from './models';
 export default class HeatMapLayer extends BaseLayer<IHeatMapLayerStyleOptions> {
   public type: string = 'HeatMapLayer';
 
@@ -9,6 +10,15 @@ export default class HeatMapLayer extends BaseLayer<IHeatMapLayerStyleOptions> {
     const shape = this.getModelType();
     this.layerModel = new HeatMapModels[shape](this);
     await this.initLayerModels();
+  }
+
+  public prerender() {
+    const shape = this.getModelType();
+    if (shape === 'heatmap') {
+      if (this.layerModel) {
+        this.layerModel.prerender(); // 独立的渲染流程
+      }
+    }
   }
 
   public renderModels(options: Partial<IRenderOptions> = {}) {

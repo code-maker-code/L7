@@ -1,14 +1,14 @@
-import {
+import type {
   IInteractionTarget,
   ILayer,
   ILayerService,
   IPickingService,
   ITile,
   ITilePickService,
-  TYPES,
 } from '@antv/l7-core';
+import { TYPES } from '@antv/l7-core';
 import { decodePickingColor, encodePickingColor } from '@antv/l7-utils';
-import { TileLayerService } from './TileLayerService';
+import type { TileLayerService } from './TileLayerService';
 import { TileSourceService } from './TileSourceService';
 export interface ITilePickServiceOptions {
   layerService: ILayerService;
@@ -44,7 +44,7 @@ export class TilePickService implements ITilePickService {
     }
   }
 
-  public pick(layer: ILayer, target: IInteractionTarget) {
+  public async pick(layer: ILayer, target: IInteractionTarget) {
     const container = this.parent.getContainer();
     const pickingService = container.get<IPickingService>(
       TYPES.IPickingService,

@@ -36,6 +36,7 @@ export default defineConfig({
   themeConfig: {
     title: 'L7',
     isAntVSite: false,
+    footerTheme: 'light', // 白色 底部主题
     internalSite: {
       url: 'https://gitee.com/antv/L7',
       name: {
@@ -53,16 +54,25 @@ export default defineConfig({
     showChartResize: true, // 是否在demo页展示图表视图切换
     showAPIDoc: true, // 是否在demo页展示API文档
     detail: {
+      engine: {
+        zh: 'L7',
+        en: 'L7',
+      },
       title: {
-        zh: '蚂蚁地理空间数据可视化',
-        en: 'L7 Geospatial Visualization',
+        zh: 'L7·蚂蚁地理空间数据可视化',
+        en: 'L7·Geospatial Visualization',
       },
       description: {
         zh: '蚂蚁集团 AntV 数据可视化团队推出的基于 WebGL 的开源大规模地理空间数据可视分析引擎。',
         en: 'Geospatial Data Visualization Analysis Engine',
       },
       image:
-        'https://gw.alipayobjects.com/mdn/antv_site/afts/img/A*cCI7RaJs46AAAAAAAAAAAABkARQnAQ',
+        'https://mdn.alipayobjects.com/huamei_qa8qxu/afts/img/A*5bIcTaxarjoAAAAAAAAAAAAADmJ7AQ/original',
+      imageStyle: {
+        transform: 'scale(0.6)',
+        marginLeft: '145px',
+        marginTop: '-25px',
+      },
       buttons: [
         {
           text: {
@@ -76,14 +86,16 @@ export default defineConfig({
             zh: '图表示例',
             en: 'gallery',
           },
-          link: '/examples',
           type: 'primary',
+          link: '/examples',
         },
         {
           text: {
             zh: 'QuickIssue',
             en: 'QuickIssue',
           },
+          type: 'primary',
+          icon: null,
           link: '/tutorial/quick_issue',
         },
       ],
@@ -96,11 +108,11 @@ export default defineConfig({
           en: 'News',
         },
         title: {
-          zh: '地理数据编辑工具',
-          en: 'L7 Editor',
+          zh: '地图站点导航工具',
+          en: 'DipperMap',
         },
-        date: '2023.09.15',
-        link: 'https://l7editor.antv.antgroup.com/',
+        date: '2023.12.01',
+        link: 'https://nav.dippermap.com/',
       },
       {
         type: {
@@ -326,20 +338,12 @@ export default defineConfig({
         order: 4,
       },
       {
-        slug: 'tutorial/demo',
-        title: {
-          zh: '教程示例',
-          en: 'Tutorial demo',
-        },
-        order: 5,
-      },
-      {
         slug: 'tutorial/point',
         title: {
           zh: '点图层 PointLayer',
           en: 'PointLayer',
         },
-        order: 6,
+        order: 5,
       },
       {
         slug: 'tutorial/line',
@@ -347,7 +351,7 @@ export default defineConfig({
           zh: '线图层 LineLayer',
           en: 'LineLayer',
         },
-        order: 7,
+        order: 6,
       },
       {
         slug: 'tutorial/polygon',
@@ -355,7 +359,7 @@ export default defineConfig({
           zh: '面图层 PolygonLayer',
           en: 'PolygonLayer',
         },
-        order: 8,
+        order: 7,
       },
       {
         slug: 'tutorial/heatmap',
@@ -363,7 +367,7 @@ export default defineConfig({
           zh: '热力图层 HeatmapLayer',
           en: 'HeatmapLayer',
         },
-        order: 9,
+        order: 8,
       },
       {
         slug: 'tutorial/tile',
@@ -553,8 +557,8 @@ export default defineConfig({
         slug: 'raster',
         icon: 'raster',
         title: {
-          zh: '栅格图层🌟',
-          en: 'Raster Layer🌟',
+          zh: '栅格图层',
+          en: 'Raster Layer',
         },
         order: 7,
       },
@@ -562,8 +566,8 @@ export default defineConfig({
         slug: 'tile',
         icon: 'raster',
         title: {
-          zh: '瓦片图层 🌟',
-          en: 'Tile Layer🌟 ',
+          zh: '瓦片图层',
+          en: 'Tile Layer',
         },
         order: 7,
       },
@@ -571,8 +575,8 @@ export default defineConfig({
         slug: 'Mask',
         icon: 'raster',
         title: {
-          zh: '图层掩膜 🌟',
-          en: 'Layer Mask🌟 ',
+          zh: '图层掩膜',
+          en: 'Layer Mask',
         },
         order: 7,
       },
@@ -702,7 +706,6 @@ export default defineConfig({
   },
   alias: {
     '@antv/l7': path.resolve(__dirname, '../l7/src'),
-    '@antv/l7-mini': path.resolve(__dirname, '../mini/src'),
     '@antv/l7-maps/lib/map': path.resolve(__dirname, '../maps/src/map'),
     '@antv/l7-core': path.resolve(__dirname, '../core/src'),
     '@antv/l7-component': path.resolve(__dirname, '../component/src'),

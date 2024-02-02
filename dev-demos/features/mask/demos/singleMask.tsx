@@ -1,15 +1,15 @@
 // @ts-ignore
-import { Scene, PointLayer, PolygonLayer} from '@antv/l7';
+import { PointLayer, PolygonLayer, Scene } from '@antv/l7';
 // @ts-ignore
-import { GaodeMap } from '@antv/l7-maps';
+import { GaodeMap, Map } from '@antv/l7-maps';
 import React, { useEffect } from 'react';
 
 export default () => {
   useEffect(() => {
     const scene = new Scene({
       id: 'map',
-     
-      map: new GaodeMap({
+      renderer: process.env.renderer,
+      map: new (process.env.CI ? Map : GaodeMap)({
         center: [120.165, 30.26],
         pitch: 0,
         zoom: 15,
@@ -43,8 +43,12 @@ export default () => {
     };
 
     scene.on('loaded', () => {
-      const polygonLayer = new PolygonLayer().source(maskData).shape('fill').color('#f00').style({opacity:0.5});
-      
+      const polygonLayer = new PolygonLayer()
+        .source(maskData)
+        .shape('fill')
+        .color('#f00')
+        .style({ opacity: 0.5 });
+
       let point1 = new PointLayer({
         zIndex: 1,
         maskLayers: [polygonLayer],
@@ -99,6 +103,7 @@ export default () => {
       scene.addLayer(point1);
       scene.addLayer(polygonLayer);
       scene.addLayer(point2);
+      // scene.startAnimate();
     });
   }, []);
   return (

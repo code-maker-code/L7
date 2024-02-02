@@ -14,6 +14,7 @@ export default () => {
   useEffect(() => {
     const scene = new Scene({
       id: 'map',
+      // renderer: process.env.renderer,
       map: new GaodeMap({
         style: 'dark',
         center: [120, 29.732983],

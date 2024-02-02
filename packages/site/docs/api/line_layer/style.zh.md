@@ -3,7 +3,7 @@ title: Style
 order: 8
 ---
 
-<embed src="@/docs/common/style.md"></embed>
+<embed src="@/docs/api/common/style.md"></embed>
 
 `style` 方法用于配制图层的样式，相同图层拥有不同的 `shape` 图形，不同 `shape` 的图层 `style` 方法接受不同的参数。
 
@@ -88,7 +88,7 @@ layer.style({
 | ------------- | -------- | -------------|--------------------- | ------ |
 | opacity | `number` | 透明度，支持数据映射 |是| `1`   |
 | strokeOpacity | `number` |描边透明度 |否| `30`   |
-| stroke | `number` | 弧线分段，分段越多越平滑，消耗越大 |是| `#000`   |
+| stroke | `number` | 描边颜色 |是| `#000`   |
 | strokeWidth | `number` | 描边宽度 | `1` |否  |
 | gapWidth | `number` | 不同方向两条线间距 | `2` |否  |
 | offsets | `[number,number]` | 两端偏移量，支持数据映射 |是| `[0,0]`   |

@@ -1,9 +1,9 @@
-import { gl } from './gl';
-import { IAttribute } from './IAttribute';
-import { IBuffer } from './IBuffer';
-import { IElements } from './IElements';
-import { ITexture2D } from './ITexture2D';
-import { IUniform } from './IUniform';
+import type { gl } from './gl';
+import type { IAttribute } from './IAttribute';
+import type { IBuffer } from './IBuffer';
+import type { IElements } from './IElements';
+import type { ITexture2D } from './ITexture2D';
+import type { IUniform } from './IUniform';
 
 export interface IBlendOptions {
   // gl.enable(gl.BLEND)
@@ -239,6 +239,13 @@ export interface IModelInitializationOptions {
     // gl.cullFace
     face: gl.FRONT | gl.BACK;
   };
+
+  /**
+   * When disabled, a global diagnostic filter can be used to apply a diagnostic filter to the entire WGSL module. Default to `true`.
+   * @see https://www.khronos.org/opengl/wiki/Sampler_(GLSL)#Non-uniform_flow_control
+   * @see https://www.w3.org/TR/WGSL/#example-70cf6bac
+   */
+  diagnosticDerivativeUniformityEnabled?: boolean;
 }
 
 export interface IModelDrawOptions {
@@ -254,6 +261,8 @@ export interface IModelDrawOptions {
   blend?: Partial<IBlendOptions>;
 
   stencil?: Partial<IStencilOptions>;
+
+  textures?: ITexture2D[];
 }
 
 /**

@@ -1,11 +1,12 @@
-import {
-  AttributeType,
-  gl,
+import type {
   IEncodeFeature,
   IFontMapping,
   IModel,
   IModelUniform,
-  ITexture2D,
+  ITexture2D} from '@antv/l7-core';
+import {
+  AttributeType,
+  gl
 } from '@antv/l7-core';
 import {
   boundsContains,
@@ -15,15 +16,17 @@ import {
   rgb2arr,
 } from '@antv/l7-utils';
 import BaseModel from '../../core/BaseModel';
-import { IPointLayerStyleOptions } from '../../core/interface';
+import type { IPointLayerStyleOptions } from '../../core/interface';
 import CollisionIndex from '../../utils/collision-index';
+import type {
+  IGlyphQuad} from '../../utils/symbol-layout';
 import {
   getGlyphQuads,
-  IGlyphQuad,
   shapeText,
 } from '../../utils/symbol-layout';
-import textFrag from '../shaders/text_frag.glsl';
-import textVert from '../shaders/text_vert.glsl';
+import textFrag from '../shaders/text/text_frag.glsl';
+import textVert from '../shaders/text/text_vert.glsl';
+import { ShaderLocation } from '../../core/CommonStyleAttribute';
 const { isEqual } = lodashUtil;
 
 export function TextTrianglation(feature: IEncodeFeature) {
@@ -101,6 +104,16 @@ export default class TextModel extends BaseModel {
   private textCount: number = 0;
   private preTextStyle: Partial<IPointLayerStyleOptions> = {};
   public getUninforms(): IModelUniform {
+    const commoninfo = this.getCommonUniformsInfo();
+    const attributeInfo = this.getUniformsBufferInfo(this.getStyleAttribute());
+    this.updateStyleUnifoms();
+    return {
+      ...commoninfo.uniformsOption,
+      ...attributeInfo.uniformsOption,
+      ...{u_sdf_map:this.textures[0]}
+    }
+  }
+  protected getCommonUniformsInfo(): { uniformsArray: number[]; uniformsLength: number; uniformsOption:{[key: string]: any}  } {
     const {
       stroke = '#fff',
       strokeWidth = 0,
@@ -116,16 +129,17 @@ export default class TextModel extends BaseModel {
     }
 
     this.preTextStyle = this.getTextStyle();
-    return {
+
+    const commonOptions = {
+      u_stroke_color: rgb2arr(stroke),
+      u_sdf_map_size: [canvas?.width || 1, canvas?.height || 1],
       u_raisingHeight: Number(raisingHeight),
       u_stroke_width: strokeWidth,
-      u_stroke_color: rgb2arr(stroke),
-      u_sdf_map: this.texture,
-      u_halo_blur: halo,
       u_gamma_scale: gamma,
-      u_sdf_map_size: [canvas?.width || 1, canvas?.height || 1],
-      ...this.getStyleAttribute(),
+      u_halo_blur: halo
     };
+    const commonBufferInfo = this.getUniformsBufferInfo(commonOptions);
+    return commonBufferInfo;
   }
 
   public async initModels(): Promise<IModel[]> {
@@ -134,6 +148,7 @@ export default class TextModel extends BaseModel {
     this.extent = this.textExtent();
     this.rawEncodeData = this.layer.getEncodedData();
     this.preTextStyle = this.getTextStyle();
+    this.initUniformsBuffer();
     return this.buildModels();
   }
 
@@ -216,6 +231,7 @@ export default class TextModel extends BaseModel {
       name: 'textOffsets',
       type: AttributeType.Attribute,
       descriptor: {
+        shaderLocation:10,
         name: 'a_textOffsets', // 文字偏移量
         buffer: {
           // give the WebGL driver a hint that this buffer may change
@@ -233,32 +249,12 @@ export default class TextModel extends BaseModel {
         },
       },
     });
-
-    // point layer size;
-    this.styleAttributeService.registerStyleAttribute({
-      name: 'size',
-      type: AttributeType.Attribute,
-      descriptor: {
-        name: 'a_Size',
-        buffer: {
-          // give the WebGL driver a hint that this buffer may change
-          usage: gl.DYNAMIC_DRAW,
-          data: [],
-          type: gl.FLOAT,
-        },
-        size: 1,
-        update: (feature: IEncodeFeature) => {
-          const { size = 12 } = feature;
-          return Array.isArray(size) ? [size[0]] : [size as number];
-        },
-      },
-    });
-
     this.styleAttributeService.registerStyleAttribute({
       name: 'textUv',
       type: AttributeType.Attribute,
       descriptor: {
         name: 'a_tex',
+        shaderLocation:ShaderLocation.UV,
         buffer: {
           usage: gl.DYNAMIC_DRAW,
           data: [],
@@ -274,6 +270,28 @@ export default class TextModel extends BaseModel {
         },
       },
     });
+    // point layer size;
+    this.styleAttributeService.registerStyleAttribute({
+      name: 'size',
+      type: AttributeType.Attribute,
+      descriptor: {
+        name: 'a_Size',
+        shaderLocation:ShaderLocation.SIZE,
+        buffer: {
+          // give the WebGL driver a hint that this buffer may change
+          usage: gl.DYNAMIC_DRAW,
+          data: [],
+          type: gl.FLOAT,
+        },
+        size: 1,
+        update: (feature: IEncodeFeature) => {
+          const { size = 12 } = feature;
+          return Array.isArray(size) ? [size[0]] : [size as number];
+        },
+      },
+    });
+
+
   }
 
   private bindEvent() {
@@ -509,6 +527,7 @@ export default class TextModel extends BaseModel {
       width: canvas.width,
       height: canvas.height,
     });
+    this.textures = [this.texture];
   }
 
   private async reBuildModel() {

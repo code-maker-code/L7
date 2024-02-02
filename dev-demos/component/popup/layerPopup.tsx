@@ -9,7 +9,8 @@ import {
 import { featureCollection, point } from '@turf/turf';
 import React, { useState } from 'react';
 // tslint:disable-next-line:no-duplicate-imports
-import { FunctionComponent, useEffect } from 'react';
+import type { FunctionComponent } from 'react';
+import { useEffect } from 'react';
 
 const Demo: FunctionComponent = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -87,7 +88,7 @@ const Demo: FunctionComponent = () => {
         .then((res) => res.json())
         .then((data) => {
           polygonLayer.setData(data);
-        });
+                  });
       newScene.addLayer(pointLayer);
       newScene.addLayer(polygonLayer);
       newScene.addLayer(lineString);
@@ -123,7 +124,7 @@ const Demo: FunctionComponent = () => {
             fields: ['name', 'lines'],
           },
         ],
-        trigger: 'click',
+        trigger: 'hover',
         closeOnClick: true,
       });
       // pointLayer.on('mousemove', (e) => {
@@ -144,6 +145,29 @@ const Demo: FunctionComponent = () => {
 
   return (
     <>
+      <div>
+        <button
+          onClick={() => {
+            popup?.setOptions({
+              trigger:
+                popup?.getOptions().trigger === 'click' ? 'hover' : 'click',
+            });
+            console.log(popup?.getOptions().trigger);
+          }}
+        >
+          切换
+        </button>
+
+        <button
+          onClick={() => {
+            popup?.setOptions({
+              items: [],
+            });
+          }}
+        >
+          清空 items
+        </button>
+      </div>
       <div
         id="map"
         style={{

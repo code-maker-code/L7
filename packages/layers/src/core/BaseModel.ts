@@ -1,5 +1,4 @@
-import {
-  BlendType,
+import type {
   IAnimateOption,
   IAttribute,
   IBlendOptions,
@@ -25,20 +24,24 @@ import {
   IStyleAttributeService,
   ITexture2D,
   ITexture2DInitializationOptions,
+  Triangulation,
+} from '@antv/l7-core';
+import {
+  BlendType,
   lazyInject,
   MaskOperation,
   StencilType,
-  Triangulation,
   TYPES,
 } from '@antv/l7-core';
 import { rgb2arr } from '@antv/l7-utils';
 import { BlendTypes } from '../utils/blend';
 import { getStencil, getStencilMask } from '../utils/stencil';
-import { DefaultUniformStyleType, DefaultUniformStyleValue } from './constant'
 import {
   getCommonStyleAttributeOptions,
   ShaderLocation,
 } from './CommonStyleAttribute';
+import { DefaultUniformStyleType, DefaultUniformStyleValue } from './constant';
+import { MultipleOfFourNumber } from './utils';
 export type styleSingle =
   | number
   | string
@@ -69,6 +72,7 @@ const shaderLocationMap: Record<string, ShaderLocation> = {
   offsets: ShaderLocation.OFFSETS,
   rotation: ShaderLocation.ROTATION,
   extrusionBase: ShaderLocation.EXTRUSION_BASE,
+  thetaOffset: 15,
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -110,6 +114,9 @@ export default class BaseModel<ChildLayerStyleOptions = {}>
   protected cameraService: ICameraService;
   protected layerService: ILayerService;
   protected pickingService: IPickingService;
+
+  protected attributeUnifoms: IBuffer; // 支持数据映射的buffer
+  protected commonUnifoms: IBuffer; // 不支持数据映射的buffer
 
   // style texture data mapping
 
@@ -189,10 +196,27 @@ export default class BaseModel<ChildLayerStyleOptions = {}>
   public getDefaultStyle(): unknown {
     return {};
   }
+  // public getUninforms(): IModelUniform {
+  //   throw new Error('Method not implemented.');
+  // }
   public getUninforms(): IModelUniform {
-    throw new Error('Method not implemented.');
+    const commoninfo = this.getCommonUniformsInfo();
+    const attributeInfo = this.getUniformsBufferInfo(this.getStyleAttribute());
+    this.updateStyleUnifoms();
+    const result = {
+      ...attributeInfo.uniformsOption,
+      ...commoninfo.uniformsOption,
+    };
+    //如果是regl渲染 需要在uniform中带上u_texture 暂时用this.rendererService.device判断
+    if (
+      !this.rendererService.hasOwnProperty('device') &&
+      this.textures &&
+      this.textures.length === 1
+    ) {
+      result['u_texture'] = this.textures[0];
+    }
+    return result;
   }
-
   public getAnimateUniforms(): IModelUniform {
     return {};
   }
@@ -220,6 +244,7 @@ export default class BaseModel<ChildLayerStyleOptions = {}>
   } {
     throw new Error('Method not implemented.');
   }
+  public prerender(): void {}
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public render(renderOptions?: Partial<IRenderOptions>): void {
     throw new Error('Method not implemented.');
@@ -242,6 +267,7 @@ export default class BaseModel<ChildLayerStyleOptions = {}>
     }
   }
 
+  // 动态注入参与数据映射的uniform
   protected getInject(): IInject {
     const encodeStyleAttribute = this.layer.encodeStyleAttribute;
     let str = '';
@@ -252,10 +278,15 @@ export default class BaseModel<ChildLayerStyleOptions = {}>
     const uniforms: string[] = [];
     // 支持数据映射的类型
     this.layer.enableShaderEncodeStyles.forEach((key: string) => {
-      if (encodeStyleAttribute[key]) { // 配置了数据映射的类型
+      if (encodeStyleAttribute[key]) {
+        // 配置了数据映射的类型
         str += `#define USE_ATTRIBUTE_${key.toUpperCase()} 0.0; \n\n`;
       } else {
         uniforms.push(`  ${DefaultUniformStyleType[key]} u_${key};`);
+      }
+      let location = shaderLocationMap[key];
+      if (!location && key === 'THETA_OFFSET') {
+        location = 15;
       }
       str += `
           #ifdef USE_ATTRIBUTE_${key.toUpperCase()}
@@ -305,7 +336,9 @@ ${uniforms.join('\n')}
         const keyValue = this.layer.getLayerConfig()[key];
 
         let value =
-          typeof keyValue === 'undefined' ? DefaultUniformStyleValue[key] : keyValue;
+          typeof keyValue === 'undefined'
+            ? DefaultUniformStyleValue[key]
+            : keyValue;
         if (key === 'stroke') {
           value = rgb2arr(value);
         }
@@ -329,5 +362,79 @@ ${uniforms.join('\n')}
   }
   public updateEncodeAttribute(type: string, flag: boolean) {
     this.encodeStyleAttribute[type] = flag;
+  }
+
+  public initUniformsBuffer() {
+    const attrUniforms = this.getUniformsBufferInfo(this.getStyleAttribute());
+    const commonUniforms = this.getCommonUniformsInfo();
+    if (attrUniforms.uniformsLength !== 0) {
+      this.attributeUnifoms = this.rendererService.createBuffer({
+        data: new Float32Array(
+          MultipleOfFourNumber(attrUniforms.uniformsLength),
+        ).fill(0), // 长度需要大于等于 4
+        isUBO: true,
+      });
+      this.uniformBuffers.push(this.attributeUnifoms);
+    }
+    if (commonUniforms.uniformsLength !== 0) {
+      this.commonUnifoms = this.rendererService.createBuffer({
+        data: new Float32Array(
+          MultipleOfFourNumber(commonUniforms.uniformsLength),
+        ).fill(0),
+        isUBO: true,
+      });
+      this.uniformBuffers.push(this.commonUnifoms);
+    }
+  }
+  // 获取数据映射 uniform 信息
+  protected getUniformsBufferInfo(uniformsOption: { [key: string]: any }) {
+    let uniformsLength = 0;
+    const uniformsArray: number[] = [];
+    Object.values(uniformsOption).forEach((value: any) => {
+      if (Array.isArray(value)) {
+        uniformsArray.push(...value);
+        uniformsLength += value.length;
+      } else if (typeof value === 'number') {
+        // 排除纹理
+        uniformsArray.push(value);
+        uniformsLength += 1;
+      } else if (typeof value === 'boolean') {
+        uniformsArray.push(Number(value));
+        uniformsLength += 1;
+      }
+    });
+
+    return {
+      uniformsOption,
+      uniformsLength,
+      uniformsArray,
+    };
+  }
+  protected getCommonUniformsInfo(): {
+    uniformsArray: number[];
+    uniformsLength: number;
+    uniformsOption: { [key: string]: any };
+  } {
+    return {
+      uniformsLength: 0,
+      uniformsArray: [],
+      uniformsOption: {},
+    };
+  }
+
+  // 更新支持数据映射的uniform
+  public updateStyleUnifoms() {
+    const { uniformsArray } = this.getUniformsBufferInfo(
+      this.getStyleAttribute(),
+    );
+    const { uniformsArray: commonUniformsArray } = this.getCommonUniformsInfo();
+    this.attributeUnifoms?.subData({
+      offset: 0,
+      data: new Uint8Array(new Float32Array(uniformsArray).buffer),
+    });
+    this.commonUnifoms?.subData({
+      offset: 0,
+      data: new Uint8Array(new Float32Array(commonUniformsArray).buffer),
+    });
   }
 }

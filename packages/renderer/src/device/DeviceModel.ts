@@ -1,31 +1,38 @@
-import {
+import type {
   Bindings,
-  BlendFactor,
-  BlendMode,
   Buffer,
-  ChannelWriteMask,
-  CompareFunction,
-  CullMode,
   Device,
-  Format,
   InputLayout,
   InputLayoutBufferDescriptor,
   Program,
   RenderPipeline,
-  TransparentBlack,
-  VertexStepMode,
 } from '@antv/g-device-api';
 import {
+  BlendFactor,
+  BlendMode,
+  ChannelWriteMask,
+  CompareFunction,
+  CullMode,
+  Format,
+  StencilOp,
+  TransparentBlack,
+  VertexStepMode,
+  ViewportOrigin,
+} from '@antv/g-device-api';
+import type {
   IModel,
   IModelDrawOptions,
   IModelInitializationOptions,
   IUniform,
-  gl,
 } from '@antv/l7-core';
+import { gl } from '@antv/l7-core';
 import { lodashUtil } from '@antv/l7-utils';
-import DeviceAttribute from './DeviceAttribute';
-import DeviceBuffer from './DeviceBuffer';
-import DeviceElements from './DeviceElements';
+import type DeviceRendererService from '.';
+import type DeviceAttribute from './DeviceAttribute';
+import type DeviceBuffer from './DeviceBuffer';
+import type DeviceElements from './DeviceElements';
+import DeviceFramebuffer from './DeviceFramebuffer';
+import DeviceTexture2D from './DeviceTexture2D';
 import {
   blendEquationMap,
   blendFuncMap,
@@ -33,6 +40,8 @@ import {
   depthFuncMap,
   primitiveMap,
   sizeFormatMap,
+  stencilFuncMap,
+  stencilOpMap,
 } from './constants';
 const { isPlainObject, isTypedArray } = lodashUtil;
 
@@ -52,20 +61,35 @@ export default class DeviceModel implements IModel {
   constructor(
     private device: Device,
     private options: IModelInitializationOptions,
+    private service: DeviceRendererService,
   ) {
-    const { vs, fs, attributes, uniforms, count, elements } = options;
+    const {
+      vs,
+      fs,
+      attributes,
+      uniforms,
+      count,
+      elements,
+      diagnosticDerivativeUniformityEnabled,
+    } = options;
     this.options = options;
 
-    const program = device.createProgram({
+    const diagnosticDerivativeUniformityHeader =
+      diagnosticDerivativeUniformityEnabled
+        ? ''
+        : this.service['viewportOrigin'] === ViewportOrigin.UPPER_LEFT
+        ? 'diagnostic(off,derivative_uniformity);'
+        : '';
+
+    this.program = service.renderCache.createProgram({
       vertex: {
         glsl: vs,
       },
       fragment: {
         glsl: fs,
+        postprocess: (fs) => diagnosticDerivativeUniformityHeader + fs,
       },
     });
-    this.program = program;
-
 
     if (uniforms) {
       this.uniforms = this.extractUniforms(uniforms);
@@ -116,27 +140,32 @@ export default class DeviceModel implements IModel {
       this.indexBuffer = (elements as DeviceElements).get();
     }
 
-    const inputLayout = device.createInputLayout({
+    const inputLayout = service.renderCache.createInputLayout({
       vertexBufferDescriptors,
       indexBufferFormat: elements ? Format.U32_R : null,
-      program,
+      program: this.program,
     });
     this.inputLayout = inputLayout;
 
     this.pipeline = this.createPipeline(options);
   }
 
-  private createPipeline(options: IModelInitializationOptions) {
-    const { primitive = gl.TRIANGLES, depth, cull, blend } = options;
+  private createPipeline(options: IModelInitializationOptions, pick?: boolean) {
+    const { primitive = gl.TRIANGLES, depth, cull, blend, stencil } = options;
 
     const depthParams = this.initDepthDrawParams({ depth });
     const depthEnabled = !!(depthParams && depthParams.enable);
     const cullParams = this.initCullDrawParams({ cull });
     const cullEnabled = !!(cullParams && cullParams.enable);
+    // Disable blend when picking.
     const blendParams = this.getBlendDrawParams({ blend });
     const blendEnabled = !!(blendParams && blendParams.enable);
 
+    const stencilParams = this.getStencilDrawParams({ stencil });
+    const stencilEnabled = !!(stencilParams && stencilParams.enable);
+
     return this.device.createRenderPipeline({
+      // return this.service.renderCache.createRenderPipeline({
       inputLayout: this.inputLayout,
       program: this.program,
       topology: primitiveMap[primitive],
@@ -144,51 +173,91 @@ export default class DeviceModel implements IModel {
       depthStencilAttachmentFormat: Format.D24_S8,
       megaStateDescriptor: {
         attachmentsState: [
-          {
-            channelWriteMask: ChannelWriteMask.ALL,
-            rgbBlendState: {
-              blendMode:
-                (blendEnabled && blendParams.equation.rgb) || BlendMode.ADD,
-              blendSrcFactor:
-                (blendEnabled && blendParams.func.srcRGB) ||
-                BlendFactor.SRC_ALPHA,
-              blendDstFactor:
-                (blendEnabled && blendParams.func.dstRGB) ||
-                BlendFactor.ONE_MINUS_SRC_ALPHA,
-            },
-            alphaBlendState: {
-              blendMode:
-                (blendEnabled && blendParams.equation.alpha) || BlendMode.ADD,
-              blendSrcFactor:
-                (blendEnabled && blendParams.func.srcAlpha) || BlendFactor.ONE,
-              blendDstFactor:
-                (blendEnabled && blendParams.func.dstAlpha) ||
-                BlendFactor.ONE_MINUS_SRC_ALPHA,
-            },
-          },
+          pick
+            ? {
+                channelWriteMask: ChannelWriteMask.ALL,
+                rgbBlendState: {
+                  blendMode: BlendMode.ADD,
+                  blendSrcFactor: BlendFactor.ONE,
+                  blendDstFactor: BlendFactor.ZERO,
+                },
+                alphaBlendState: {
+                  blendMode: BlendMode.ADD,
+                  blendSrcFactor: BlendFactor.ONE,
+                  blendDstFactor: BlendFactor.ZERO,
+                },
+              }
+            : {
+                channelWriteMask:
+                  stencilEnabled &&
+                  stencilParams.opFront.zpass === StencilOp.REPLACE
+                    ? ChannelWriteMask.NONE
+                    : ChannelWriteMask.ALL,
+                rgbBlendState: {
+                  blendMode:
+                    (blendEnabled && blendParams.equation.rgb) || BlendMode.ADD,
+                  blendSrcFactor:
+                    (blendEnabled && blendParams.func.srcRGB) ||
+                    BlendFactor.SRC_ALPHA,
+                  blendDstFactor:
+                    (blendEnabled && blendParams.func.dstRGB) ||
+                    BlendFactor.ONE_MINUS_SRC_ALPHA,
+                },
+                alphaBlendState: {
+                  blendMode:
+                    (blendEnabled && blendParams.equation.alpha) ||
+                    BlendMode.ADD,
+                  blendSrcFactor:
+                    (blendEnabled && blendParams.func.srcAlpha) ||
+                    BlendFactor.ONE,
+                  blendDstFactor:
+                    (blendEnabled && blendParams.func.dstAlpha) ||
+                    BlendFactor.ONE,
+                },
+              },
         ],
-        blendConstant: TransparentBlack,
+        blendConstant: blendEnabled ? TransparentBlack : undefined,
         depthWrite: depthEnabled,
         depthCompare:
           (depthEnabled && depthParams.func) || CompareFunction.LESS,
         cullMode: (cullEnabled && cullParams.face) || CullMode.NONE,
-        stencilWrite: false,
+        stencilWrite: stencilEnabled,
+        stencilFront: {
+          compare: stencilEnabled
+            ? stencilParams.func.cmp
+            : CompareFunction.ALWAYS,
+          passOp: stencilParams.opFront.zpass,
+          failOp: stencilParams.opFront.fail,
+          depthFailOp: stencilParams.opFront.zfail,
+          mask: stencilParams.opFront.mask,
+        },
+        stencilBack: {
+          compare: stencilEnabled
+            ? stencilParams.func.cmp
+            : CompareFunction.ALWAYS,
+          passOp: stencilParams.opBack.zpass,
+          failOp: stencilParams.opBack.fail,
+          depthFailOp: stencilParams.opBack.zfail,
+          mask: stencilParams.opBack.mask,
+        },
       },
     });
   }
 
-  updateAttributesAndElements() // elements: IElements, // attributes: { [key: string]: IAttribute },
-  {
-    // TODO: implement
-  }
+  updateAttributesAndElements() {}
 
-  updateAttributes() { // attributes: { [key: string]: IAttribute }
-    // TODO: implement
-    // Object.keys(attributes).forEach((name: string) => {
-    //   const attribute = attributes[name] as DeviceAttribute;
-    //   attribute.updateBuffer();
-    // });
-  }
+  /**
+   * No need to implement this method, you should update data on `Attribute` like this:
+   *
+   * @example
+   * ```ts
+   * attribute.updateBuffer({
+   *   data: [],
+   *   offset: 0,
+   * });
+   * ```
+   */
+  updateAttributes() {}
 
   addUniforms(uniforms: { [key: string]: IUniform }) {
     this.uniforms = {
@@ -197,11 +266,8 @@ export default class DeviceModel implements IModel {
     };
   }
 
-  draw(
-    options: IModelDrawOptions,
-    //  pick?: boolean
-  ) {
-    const mergedOptions = {
+  draw(options: IModelDrawOptions, pick?: boolean) {
+    const mergedOptions: IModelInitializationOptions & IModelDrawOptions = {
       ...this.options,
       ...options,
     };
@@ -219,18 +285,31 @@ export default class DeviceModel implements IModel {
       ...this.extractUniforms(uniforms),
     };
 
-    // @ts-ignore
-    const { width, height } = this.device;
+    const { renderPass, currentFramebuffer, width, height, renderCache } =
+      this.service;
 
-    // @ts-ignore
-    // const renderTarget = this.device.currentFramebuffer;
-    // const { onscreen } = renderTarget
-
-    // @ts-ignore
-    const renderPass = this.device.renderPass;
     // TODO: Recreate pipeline only when blend / cull changed.
-    this.pipeline = this.createPipeline(mergedOptions);
+    this.pipeline = this.createPipeline(mergedOptions, pick);
+
+    // const height = this.device['swapChainHeight'];
+    const device = this.service['device'];
+    // @ts-ignore
+    const tmpHeight = device['swapChainHeight'];
+    // @ts-ignore
+    device['swapChainHeight'] = currentFramebuffer?.['height'] || height;
+
+    renderPass.setViewport(
+      0,
+      0,
+      currentFramebuffer?.['width'] || width,
+      currentFramebuffer?.['height'] || height,
+    );
+
+    // @ts-ignore
+    device['swapChainHeight'] = tmpHeight;
+
     renderPass.setPipeline(this.pipeline);
+    renderPass.setStencilReference(1);
     renderPass.setVertexInput(
       this.inputLayout,
       this.vertexBuffers.map((buffer) => ({
@@ -239,14 +318,13 @@ export default class DeviceModel implements IModel {
       elements
         ? {
             buffer: this.indexBuffer,
-            offset: 0, // TODO: use defaule value
+            offset: 0,
           }
         : null,
     );
-    renderPass.setViewport(0, 0, width, height);
-
     if (uniformBuffers) {
-      this.bindings = this.device.createBindings({
+      // this.bindings = device.createBindings({
+      this.bindings = renderCache.createBindings({
         pipeline: this.pipeline,
         uniformBufferBindings: uniformBuffers.map((uniformBuffer, i) => {
           const buffer = uniformBuffer as DeviceBuffer;
@@ -266,6 +344,16 @@ export default class DeviceModel implements IModel {
     if (this.bindings) {
       renderPass.setBindings(this.bindings);
       // Compatible to WebGL1.
+      Object.keys(this.uniforms).forEach((uniformName) => {
+        const uniform = this.uniforms[uniformName];
+        if (uniform instanceof DeviceTexture2D) {
+          // @ts-ignore
+          this.uniforms[uniformName] = uniform.get();
+        } else if (uniform instanceof DeviceFramebuffer) {
+          // @ts-ignore
+          this.uniforms[uniformName] = uniform.get()['texture'];
+        }
+      });
       this.program.setUniformsLegacy(this.uniforms);
     }
 
@@ -325,63 +413,52 @@ export default class DeviceModel implements IModel {
     };
   }
 
-  // /**
-  //  * @see https://github.com/regl-project/regl/blob/gh-pages/API.md#stencil
-  //  */
-  // private getStencilDrawParams({
-  //   stencil,
-  // }: Pick<IModelInitializationOptions, 'stencil'>) {
-  //   const {
-  //     enable,
-  //     mask = -1,
-  //     func = {
-  //       cmp: gl.ALWAYS,
-  //       ref: 0,
-  //       mask: -1,
-  //     },
-  //     opFront = {
-  //       fail: gl.KEEP,
-  //       zfail: gl.KEEP,
-  //       zpass: gl.KEEP,
-  //     },
-  //     opBack = {
-  //       fail: gl.KEEP,
-  //       zfail: gl.KEEP,
-  //       zpass: gl.KEEP,
-  //     },
-  //   } = stencil || {};
-  //   return {
-  //     enable: !!enable,
-  //     mask,
-  //     func: {
-  //       ...func,
-  //       cmp: stencilFuncMap[func.cmp],
-  //     },
-  //     opFront: {
-  //       fail: stencilOpMap[opFront.fail],
-  //       zfail: stencilOpMap[opFront.zfail],
-  //       zpass: stencilOpMap[opFront.zpass],
-  //     },
-  //     opBack: {
-  //       fail: stencilOpMap[opBack.fail],
-  //       zfail: stencilOpMap[opBack.zfail],
-  //       zpass: stencilOpMap[opBack.zpass],
-  //     },
-  //   };
-  // }
-
-  // private getColorMaskDrawParams(
-  //   { stencil }: Pick<IModelInitializationOptions, 'stencil'>,
-  //   pick: boolean,
-  // ) {
-  //   // TODO: 重构相关参数
-  //   // 掩膜模式下，颜色通道全部关闭
-  //   const colorMask =
-  //     stencil?.enable && stencil.opFront && !pick
-  //       ? [false, false, false, false]
-  //       : [true, true, true, true]; // 非掩码模式下，颜色通道全部开启
-  //   return colorMask;
-  // }
+  /**
+   * @see https://github.com/regl-project/regl/blob/gh-pages/API.md#stencil
+   */
+  private getStencilDrawParams({
+    stencil,
+  }: Pick<IModelInitializationOptions, 'stencil'>) {
+    const {
+      enable,
+      mask = 0xffffffff,
+      func = {
+        cmp: gl.ALWAYS,
+        ref: 0,
+        mask: 0xffffffff,
+      },
+      opFront = {
+        fail: gl.KEEP,
+        zfail: gl.KEEP,
+        zpass: gl.KEEP,
+      },
+      opBack = {
+        fail: gl.KEEP,
+        zfail: gl.KEEP,
+        zpass: gl.KEEP,
+      },
+    } = stencil || {};
+    return {
+      enable: !!enable,
+      mask,
+      func: {
+        ...func,
+        cmp: stencilFuncMap[func.cmp],
+      },
+      opFront: {
+        fail: stencilOpMap[opFront.fail],
+        zfail: stencilOpMap[opFront.zfail],
+        zpass: stencilOpMap[opFront.zpass],
+        mask: func.mask,
+      },
+      opBack: {
+        fail: stencilOpMap[opBack.fail],
+        zfail: stencilOpMap[opBack.zfail],
+        zpass: stencilOpMap[opBack.zpass],
+        mask: func.mask,
+      },
+    };
+  }
 
   /**
    * @see https://github.com/regl-project/regl/blob/gh-pages/API.md#culling

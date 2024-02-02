@@ -1,6 +1,4 @@
-import {
-  CameraUniform,
-  CoordinateUniform,
+import type {
   IBuffer,
   ICameraService,
   ICoordinateSystemService,
@@ -9,8 +7,8 @@ import {
   ILayerService,
   IMapService,
   IRendererService,
-  TYPES,
 } from '@antv/l7-core';
+import { CameraUniform, CoordinateUniform, TYPES } from '@antv/l7-core';
 import { inject, injectable } from 'inversify';
 import 'reflect-metadata';
 
@@ -46,9 +44,10 @@ export default class ShaderUniformPlugin implements ILayerPlugin {
 
     let uniformBuffer: IBuffer;
     if (!this.rendererService.uniformBuffers[0]) {
+
       // Create a Uniform Buffer Object(UBO).
       uniformBuffer = this.rendererService.createBuffer({
-        data: new Float32Array(16 * 5 + 4 * 6 + 4),
+        data: new Float32Array(16 * 4 + 4 * 7),
         isUBO: true,
       });
       this.rendererService.uniformBuffers[0] = uniformBuffer;
@@ -59,7 +58,6 @@ export default class ShaderUniformPlugin implements ILayerPlugin {
       const offset = layer.getLayerConfig().tileOrigin;
       // 重新计算坐标系参数
       this.coordinateSystemService.refresh(offset);
-
       if (version === 'GAODE2.x') {
         this.setLayerCenter(layer);
         // @ts-ignore
@@ -67,6 +65,13 @@ export default class ShaderUniformPlugin implements ILayerPlugin {
         // mvp = amapCustomCoords.getMVPMatrix()
         // @ts-ignore
         sceneCenterMercator = this.mapService.getCustomCoordCenter();
+        const uniformBuffer = layer.getLayerUniformBuffer();
+        uniformBuffer.subData({
+          offset: 0,
+          data: new Uint8Array(
+            new Float32Array([...mvp, ...sceneCenterMercator]).buffer,
+          ),
+        });
       }
 
       const { width, height } = this.rendererService.getViewportSize();
@@ -77,24 +82,28 @@ export default class ShaderUniformPlugin implements ILayerPlugin {
         width,
         height,
       );
-
-      if (this.layerService.alreadyInRendering && uniformBuffer) {
+      if (this.layerService.alreadyInRendering && this.rendererService.uniformBuffers[0]) {
+        const renderUniformBuffer = this.rendererService.uniformBuffers[0];
         // Update only once since all models can share one UBO.
-        uniformBuffer.subData({
+        renderUniformBuffer.subData({
           offset: 0,
           data,
         });
       }
-      // For WebGL1. regl
-      layer.models.forEach((model) => {
-        model.addUniforms({
-          ...uniforms,
-          // TODO: move these 2 uniforms to PixelPickingPlugin
-          u_PickingBuffer: layer.getLayerConfig().pickingBuffer || 0,
-          // Tip: 当前地图是否在拖动
-          u_shaderPick: Number(layer.getShaderPickStat()),
+
+      // For WebGL1. regl 
+      const platformString = this.rendererService.queryVerdorInfo();
+      if (platformString === 'WebGL1') {
+        layer.models.forEach((model) => {
+          model.addUniforms({
+            ...uniforms,
+            // TODO: move these 2 uniforms to PixelPickingPlugin
+            u_PickingBuffer: layer.getLayerConfig().pickingBuffer || 0,
+            // Tip: 当前地图是否在拖动
+            u_shaderPick: Number(layer.getShaderPickStat()),
+          });
         });
-      });
+      }
     });
   }
 
@@ -142,7 +151,6 @@ export default class ShaderUniformPlugin implements ILayerPlugin {
       ...u_ProjectionMatrix, // 16
       ...u_ViewProjectionMatrix, // 16
       ...u_ModelMatrix, // 16
-      ...u_Mvp, // 16
       ...u_ViewportCenterProjection, // 4
       ...u_PixelsPerDegree, // 4
       u_Zoom,
@@ -151,11 +159,12 @@ export default class ShaderUniformPlugin implements ILayerPlugin {
       ...u_PixelsPerMeter, // 4
       u_CoordinateSystem,
       ...u_CameraPosition, // 4
-      u_DevicePixelRatio,
-      ...u_ViewportCenter, // 4
-      ...u_ViewportSize, // 2
-      ...sceneCenterMercator, // 2
+      u_DevicePixelRatio, // 4
+      ...u_ViewportCenter,
+      ...u_ViewportSize, // 4
       u_FocalDistance, // 1
+      0,
+      0,
       0,
     ];
 

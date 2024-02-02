@@ -2,14 +2,14 @@ import { lodashUtil } from '@antv/l7-utils';
 import { injectable } from 'inversify';
 import 'reflect-metadata';
 import { extractUniforms } from '../../utils/shader-module';
-import { IModuleParams, IShaderModuleService } from './IShaderModuleService';
+import type { IModuleParams, IShaderModuleService } from './IShaderModuleService';
 const { uniq } = lodashUtil;
 
 import common from '../../shaders/common.glsl';
 import decode from '../../shaders/decode.glsl';
 import scene_uniforms from '../../shaders/scene_uniforms.glsl';
 import picking_uniforms from '../../shaders/picking_uniforms.glsl';
-import light from '../../shaders/light2.glsl';
+import light from '../../shaders/common_light.glsl';
 import lighting from '../../shaders/lighting.glsl';
 import pickingFrag from '../../shaders/picking.frag.glsl';
 import pickingVert from '../../shaders/picking.vert.glsl';
@@ -56,6 +56,8 @@ export default class ShaderModuleService implements IShaderModuleService {
     //   return;
     // }
 
+    moduleParams.vs = moduleParams.vs.replace(/\r\n/g, '\n'); // 将所有的\r\n替换为\n
+    moduleParams.fs = moduleParams.fs.replace(/\r\n/g, '\n'); // 将所有的\r\n替换为\n
     const { vs, fs, uniforms: declaredUniforms, inject } = moduleParams;
     const { content: extractedVS, uniforms: vsUniforms } = extractUniforms(vs);
     const { content: extractedFS, uniforms: fsUniforms } = extractUniforms(fs);

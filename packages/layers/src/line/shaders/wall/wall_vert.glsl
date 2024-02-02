@@ -1,31 +1,38 @@
 #define Animate 0.0
+layout(location = 0) in vec3 a_Position;
+layout(location = 1) in vec4 a_Color;
+layout(location = 9) in vec2 a_Size;
+layout(location = 10) in float a_Miter;
+layout(location = 11) in float a_Total_Distance;
+layout(location = 12) in vec4 a_Instance;
+layout(location = 13) in vec3 a_Normal;
+layout(location = 14) in vec2 a_iconMapUV;
+layout(location = 15) in float a_Distance;
 
-attribute float a_Miter;
-attribute vec4 a_Color;
-attribute vec2 a_Size;
-attribute vec3 a_Normal;
-attribute vec3 a_Position;
-attribute vec2 a_iconMapUV;
-attribute float a_Total_Distance;
-attribute float a_Distance;
 
-uniform mat4 u_ModelMatrix;
-
-uniform vec4 u_animate: [ 1., 2., 1.0, 0.2 ];
-uniform float u_icon_step: 100;
-uniform float u_heightfixed;
-uniform float u_linearColor: 0;
-
+layout(std140) uniform commonUniorm {
+  vec4 u_animate: [ 1., 2., 1.0, 0.2 ];
+  vec4 u_sourceColor;
+  vec4 u_targetColor;
+  vec2 u_textSize;
+  float u_icon_step: 100;
+  float u_heightfixed;
+  float u_linearColor: 0;
+  float u_line_texture;
+  float u_textureBlend;
+  float u_iconStepCount;
+  float u_time;
+};
 #pragma include "projection"
 #pragma include "light"
 #pragma include "picking"
 
 // texV 线图层 - 贴图部分的 v 坐标（线的宽度方向）
-varying vec2 v_iconMapUV;
-varying vec4 v_color;
-varying float v_blur;
-varying float v_radio;
-varying vec4 v_dataset;
+out vec2 v_iconMapUV;
+out vec4 v_color;
+out float v_blur;
+out float v_radio;
+out vec4 v_dataset;
 
 void main() {
 
@@ -57,15 +64,16 @@ void main() {
   vec4 project_pos = project_position(vec4(a_Position.xy, 0, 1.0));
 
   float originSize = a_Size.x;  // 固定高度
-  if(u_heightfixed < 1.0) {     // 高度随 zoom 调整
-    originSize = project_float_pixel(a_Size.x);
+  if(u_heightfixed < 1.0) {    
+     originSize = project_float_meter(a_Size.x); // 高度随 zoom 调整
   }
+
 
   float wallHeight = originSize * miter;
   float lightWeight = calc_lighting(vec4(project_pos.xy, wallHeight, 1.0));
 
   v_blur = min(project_float_pixel(2.0) / originSize, 0.05);
-  v_color = vec4(a_Color.rgb * lightWeight, a_Color.w);
+  v_color = vec4(a_Color.rgb * lightWeight, a_Color.w * opacity);
 
   if(u_CoordinateSystem == COORDINATE_SYSTEM_P20_2) { // gaode2.x
     gl_Position = u_Mvp * (vec4(project_pos.xy, wallHeight, 1.0));

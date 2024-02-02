@@ -16,6 +16,7 @@ import {
     useEffect(() => {
       const scene = new Scene({
         id: 'map',
+       renderer: process.env.renderer,
         map: new GaodeMap({
           center: [105, 32],
           zoom: 4,
@@ -74,12 +75,13 @@ import {
         .shape('line')
         .color('#f00')
         .style({
-            storkeWidth: 0.2,
+            strokeWidth: 0.5,
             stroke: '#00f',
         });
   
    
       scene.on('loaded', () => {
+        scene.startAnimate();
         scene.addLayer(layer);
         
     

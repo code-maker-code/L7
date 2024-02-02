@@ -40,6 +40,7 @@ scene.on('loaded', () => {
 | 名称   | 说明                                                                                       | 类型                                         |
 | ------ | ------------------------------------------------------------------------------------------ | -------------------------------------------- |
 | layers | 需要被控制的 `layer` 数组，支持传入图层示例或者图层 id，不传则默认读取当前 L7 中所有的图层 | `Array<ILayer \| string \| LayerSwitchItem>` |
+| multiple | 控件内的图层选项是否为多选，单选模式下默认展示第一个选项对应的图层 | `boolean` |
 
 ### LayerSwitchItem
 
@@ -49,20 +50,20 @@ scene.on('loaded', () => {
 | name  | 展示的图层名称            | `string \| undefined` |
 | img   | 展示的图层图片 `URL`      | `string \| undefined` |
 
-<embed src="@/docs/common/control/popper-api.zh.md"></embed>
+<embed src="@/docs/api/common/control/popper-api.zh.md"></embed>
 
-<embed src="@/docs/common/control/btn-api.zh.md"></embed>
+<embed src="@/docs/api/common/control/btn-api.zh.md"></embed>
 
-<embed src="@/docs/common/control/api.zh.md"></embed>
+<embed src="@/docs/api/common/control/api.zh.md"></embed>
 
 ## 方法
 
-<embed src="@/docs/common/control/method.zh.md"></embed>
+<embed src="@/docs/api/common/control/method.zh.md"></embed>
 
 ## 事件
 
-<embed src="@/docs/common/control/event.zh.md"></embed>
+<embed src="@/docs/api/common/control/event.zh.md"></embed>
 
-<embed src="@/docs/common/control/popper-event.zh.md"></embed>
+<embed src="@/docs/api/common/control/popper-event.zh.md"></embed>
 
-<embed src="@/docs/common/control/select-event.zh.md"></embed>
+<embed src="@/docs/api/common/control/select-event.zh.md"></embed>

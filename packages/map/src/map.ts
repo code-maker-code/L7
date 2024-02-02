@@ -1,35 +1,44 @@
 import { DOM, lodashUtil } from '@antv/l7-utils';
 import Camera from './camera';
 import './css/l7.css';
-import LngLat, { LngLatLike } from './geo/lng_lat';
-import LngLatBounds, { LngLatBoundsLike } from './geo/lng_lat_bounds';
+import type { LngLatLike } from './geo/lng_lat';
+import LngLat from './geo/lng_lat';
+import type { LngLatBoundsLike } from './geo/lng_lat_bounds';
+import LngLatBounds from './geo/lng_lat_bounds';
 // @ts-ignore
-import Point, { PointLike } from './geo/point';
-import BoxZoomHandler from './handler/box_zoom';
+import type { PointLike } from './geo/point';
+import Point from './geo/point';
+import type BoxZoomHandler from './handler/box_zoom';
 import HandlerManager from './handler/handler_manager';
-import KeyboardHandler from './handler/keyboard';
+import type KeyboardHandler from './handler/keyboard';
 
-import ScrollZoomHandler from './handler/scroll_zoom';
-import DoubleClickZoomHandler from './handler/shim/dblclick_zoom';
-import DragPanHandler from './handler/shim/drag_pan';
-import DragRotateHandler from './handler/shim/drag_rotate';
-import TouchZoomRotateHandler from './handler/shim/touch_zoom_rotate';
-import { TouchPitchHandler } from './handler/touch';
+import type ScrollZoomHandler from './handler/scroll_zoom';
+import type DoubleClickZoomHandler from './handler/shim/dblclick_zoom';
+import type DragPanHandler from './handler/shim/drag_pan';
+import type DragRotateHandler from './handler/shim/drag_rotate';
+import type TouchZoomRotateHandler from './handler/shim/touch_zoom_rotate';
+import type { TouchPitchHandler } from './handler/touch';
 import Hash from './hash';
-import { IMapOptions } from './interface';
+import type { IMapOptions } from './interface';
 import { renderframe } from './util';
 import { PerformanceUtils } from './utils/performance';
-import TaskQueue, { TaskID } from './utils/task_queue';
+import type { TaskID } from './utils/task_queue';
+import TaskQueue from './utils/task_queue';
 
 (function () {
-  if ( typeof window.CustomEvent === "function" ) return false; //If not IE
+  if (typeof window.CustomEvent === 'function') return false; //If not IE
 
-  function CustomEvent ( event: any, params:any ) {
+  function CustomEvent(event: any, params: any) {
     params = params || { bubbles: false, cancelable: false, detail: undefined };
-    const evt = document.createEvent( 'CustomEvent' );
-    evt.initCustomEvent( event, params.bubbles, params.cancelable, params.detail );
+    const evt = document.createEvent('CustomEvent');
+    evt.initCustomEvent(
+      event,
+      params.bubbles,
+      params.cancelable,
+      params.detail,
+    );
     return evt;
-   }
+  }
 
   CustomEvent.prototype = window.Event.prototype;
   // @ts-ignore
@@ -294,6 +303,17 @@ export class Map extends Camera {
       this.frame = null;
     }
     this.renderTaskQueue.clear();
+    //销毁事件
+    this.handlers.destroy();
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('online', this.onWindowOnline, false);
+      window.removeEventListener('resize', this.onWindowResize, false);
+      window.removeEventListener(
+        'orientationchange',
+        this.onWindowResize,
+        false,
+      );
+    }
   }
 
   public requestRenderFrame(cb: CallBack): TaskID {

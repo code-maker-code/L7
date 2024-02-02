@@ -1,7 +1,8 @@
 /// <reference types="amap-js-api" />
 /// <reference types="bmapgl" />
+/// <reference types="google.maps" />
 /// <reference types="tmap-types-temporary" />
-import { IControl } from 'mapbox-gl';
+import type { IControl } from 'mapbox-gl';
 
 interface Window {
   initAMap: () => void;

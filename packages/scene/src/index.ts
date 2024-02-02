@@ -1,8 +1,6 @@
 import { Logo } from '@antv/l7-component';
-import {
+import type {
   Bounds,
-  createLayerContainer,
-  createSceneContainer,
   ICameraOptions,
   IControl,
   IControlService,
@@ -27,18 +25,22 @@ import {
   ISceneConfig,
   ISceneService,
   IStatusOptions,
-  Point,
+  Point} from '@antv/l7-core';
+import {
+  createLayerContainer,
+  createSceneContainer,
   SceneEventList,
   TYPES,
 } from '@antv/l7-core';
 import { MaskLayer } from '@antv/l7-layers';
 import { DeviceRendererService, ReglRendererService } from '@antv/l7-renderer';
-import { DOM, IProtocolHandler, SceneConifg } from '@antv/l7-utils';
-import { Container } from 'inversify';
+import type { IProtocolHandler} from '@antv/l7-utils';
+import { DOM, SceneConifg } from '@antv/l7-utils';
+import type { Container } from 'inversify';
 import BoxSelect, { BoxSelectEventList } from './boxSelect';
-import ILayerManager from './ILayerManager';
-import IMapController from './IMapController';
-import IPostProcessingPassPluggable from './IPostProcessingPassPluggable';
+import type ILayerManager from './ILayerManager';
+import type IMapController from './IMapController';
+import type IPostProcessingPassPluggable from './IPostProcessingPassPluggable';
 
 /**
  * 暴露 Scene API
@@ -69,13 +71,12 @@ class Scene
   private container: Container;
 
   public constructor(config: ISceneConfig) {
-    const { id, map, canvas, hasBaseMap, renderer = 'regl' } = config;
+    const { id, map, canvas, renderer = 'regl' } = config;
     // 创建场景容器
     const sceneContainer = createSceneContainer();
     this.container = sceneContainer;
     // 绑定地图服务
-    map.setContainer(sceneContainer, id, canvas, hasBaseMap);
-
+    map.setContainer(sceneContainer, id, canvas);
     // 绑定渲染引擎服务
     sceneContainer
       .bind<IRendererService>(TYPES.IRendererService)
@@ -529,6 +530,14 @@ class Scene
 
   public getProtocol(protocol: string): IProtocolHandler {
     return SceneConifg.REGISTERED_PROTOCOLS[protocol];
+  }
+
+  public startAnimate() {
+    this.layerService.startAnimate();
+  }
+
+  public stopAnimate() {
+    this.layerService.stopAnimate();
   }
 
   // get current point size info

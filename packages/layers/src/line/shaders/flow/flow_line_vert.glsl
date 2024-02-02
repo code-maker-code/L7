@@ -1,19 +1,20 @@
-attribute vec4 a_Color;
-attribute vec2 a_Size;
-attribute vec4 a_Instance;
-attribute vec3 a_Normal;
-attribute vec3 a_Position;
+layout(location = 0) in vec3 a_Position;
+layout(location = 1) in vec4 a_Color;
+layout(location = 9) in vec2 a_Size;
+layout(location = 12) in vec4 a_Instance;
+layout(location = 13) in vec3 a_Normal;
 
-uniform mat4 u_ModelMatrix;
-
+layout(std140) uniform commonUniorm {
+  float u_gap_width: 1.0;
+  float u_stroke_width: 1.0;
+  float u_stroke_opacity: 1.0;
+};
 
 #pragma include "projection"
 #pragma include "project"
 #pragma include "picking"
-varying vec4 v_color;
-uniform float u_gap_width: 1.0;
-uniform float u_stroke_width: 1.0;
-uniform float u_stroke_opacity: 1.0;
+
+out vec4 v_color;
 
 vec2 project_pixel_offset(vec2 offsets) {
 
@@ -51,9 +52,8 @@ void main() {
   vec2 source = a_Instance.rg;  // 起始点
   vec2 target =  a_Instance.ba; // 终点
   vec2 flowlineDir = line_dir(target,source);
-  vec2 perpendicularDir = vec2(flowlineDir.y, flowlineDir.x); // mapbox || 高德
-
-
+  vec2 perpendicularDir = vec2(-flowlineDir.y, flowlineDir.x); // mapbox || 高德
+   
   vec2 position = mix(source, target, a_Position.x);
   
   float lengthCommon = length(project_position(vec4(target,0,1)) - project_position(vec4(source,0,1)));  //    
@@ -77,17 +77,16 @@ void main() {
   float gapCommon = flag_gap() * project_pixel(u_gap_width);
   vec3 offsetCommon = vec3(
     flowlineDir * (limitedOffsetDistances[1] + normalsCommon.y + endpointOffset * 1.05) -
-    perpendicularDir * (limitedOffsetDistances[0] + gapCommon + normalsCommon.x),
+    perpendicularDir *  (limitedOffsetDistances[0] + gapCommon + normalsCommon.x),
     0.0
   );
-
 
   vec4 project_pos = project_position(vec4(position.xy, 0, 1.0));
 
   vec4 fillColor = vec4(a_Color.rgb, a_Color.a * opacity);
   v_color = mix(fillColor, vec4(u_stroke.xyz, u_stroke.w * fillColor.w * u_stroke_opacity), a_Normal.z);
 
-  gl_Position = project_common_position_to_clipspace_v2(vec4(project_pos.xy + offsetCommon.xy, 0., 1.0));
+  gl_Position = project_common_position_to_clipspace_v2(vec4(project_pos.xy +  offsetCommon.xy, 0., 1.0));
 
 
 

@@ -1,18 +1,18 @@
-import {
+import type {
   ILayer,
   IRendererService,
   ITexture2D,
   ITextureService,
-  TYPES,
 } from '@antv/l7-core';
+import { TYPES } from '@antv/l7-core';
 
+import type { IColorRamp } from '@antv/l7-utils';
 import {
   generateCatRamp,
   generateColorRamp,
   generateCustomRamp,
   generateLinearRamp,
   generateQuantizeRamp,
-  IColorRamp,
 } from '@antv/l7-utils';
 
 export default class TextureService implements ITextureService {
@@ -47,6 +47,7 @@ export default class TextureService implements ITextureService {
       width: imageData.width,
       height: imageData.height,
       flipY: false,
+      unorm: true,
     });
     this.colorTexture = texture;
     return texture;

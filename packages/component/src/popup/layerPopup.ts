@@ -1,6 +1,6 @@
-import { ILayer, IPopupOption } from '@antv/l7-core';
+import type { ILayer, IPopupOption } from '@antv/l7-core';
 import { DOM, lodashUtil } from '@antv/l7-utils';
-import { Container } from 'inversify';
+import type { Container } from 'inversify';
 import Popup from './popup';
 
 type ElementType = DOM.ElementType;
@@ -75,22 +75,26 @@ export default class LayerPopup extends Popup<ILayerPopupOption> {
   public setOptions(option: Partial<ILayerPopupOption>) {
     this.unbindLayerEvent();
     const newOption = { ...option };
-    const trigger = option.trigger || this.popupOption.trigger;
-    if (newOption.items?.length === 0 && trigger === 'hover') {
-      newOption.followCursor = false;
-    }
+    const trigger = newOption.trigger || this.popupOption.trigger;
+    const items = newOption.items || this.popupOption.items;
+    const isEmptyItems = items?.length === 0;
+    newOption.followCursor = trigger === 'hover' && !isEmptyItems;
+
     super.setOptions(newOption);
     this.bindLayerEvent();
+    if (isEmptyItems) {
+      this.hide();
+    }
     return this;
   }
 
   protected getDefault(option: Partial<ILayerPopupOption>): ILayerPopupOption {
-    const isClickTrigger = option.trigger === 'click';
+    const isHoverTrigger = option.trigger === 'hover';
 
     return {
       ...super.getDefault(option),
       trigger: 'hover',
-      followCursor: !isClickTrigger,
+      followCursor: isHoverTrigger,
       lngLat: {
         lng: 0,
         lat: 0,
@@ -181,17 +185,17 @@ export default class LayerPopup extends Popup<ILayerPopupOption> {
       const { title, content } = this.getLayerInfoFrag(layer, e);
       this.setDOMContent(content);
       this.setTitle(title);
-      this.displayFeatureInfo = {
+      this.setDisplayFeatureInfo({
         layer,
         featureId: e.featureId,
-      };
+      });
       this.show();
     }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected onLayerMouseOut(layer: ILayer, e: any) {
-    this.displayFeatureInfo = undefined;
+    this.setDisplayFeatureInfo(undefined);
     if (this.isShow) {
       this.hide();
     }
@@ -209,10 +213,10 @@ export default class LayerPopup extends Popup<ILayerPopupOption> {
         this.setDOMContent(content);
         this.setLnglat(e.lngLat);
         this.setTitle(title);
-        this.displayFeatureInfo = {
+        this.setDisplayFeatureInfo({
           layer,
           featureId: e.featureId,
-        };
+        });
         this.show();
       }
     });
@@ -229,7 +233,7 @@ export default class LayerPopup extends Popup<ILayerPopupOption> {
 
   protected onSourceUpdate() {
     this.hide();
-    this.displayFeatureInfo = undefined;
+    this.setDisplayFeatureInfo(undefined);
   }
 
   /**
@@ -344,6 +348,25 @@ export default class LayerPopup extends Popup<ILayerPopupOption> {
       featureId === displayFeatureInfo.featureId
     );
   }
+
+  protected setDisplayFeatureInfo(displayFeatureInfo?: {
+    layer: ILayer;
+    featureId: number;
+  }) {
+    const oldDisplayFeatureInfo = this.displayFeatureInfo;
+    if (oldDisplayFeatureInfo) {
+      oldDisplayFeatureInfo.layer.off('hide', this.onLayerHide);
+    }
+    if (displayFeatureInfo) {
+      displayFeatureInfo.layer.on('hide', this.onLayerHide);
+    }
+    this.displayFeatureInfo = displayFeatureInfo;
+  }
+
+  protected onLayerHide = () => {
+    this.hide();
+    this.setDisplayFeatureInfo(undefined);
+  };
 
   /**
    * 覆盖 Popup 中的默认的 closeOnClick 行为

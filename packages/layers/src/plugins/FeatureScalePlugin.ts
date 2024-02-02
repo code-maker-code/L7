@@ -1,18 +1,19 @@
-import {
-  IDebugLog,
+import type {
   ILayer,
   ILayerPlugin,
-  ILayerStage,
   IScale,
   IScaleOptions,
   IStyleAttribute,
   IStyleAttributeService,
   IStyleScale,
-  ScaleTypeName,
+  ScaleTypeName} from '@antv/l7-core';
+import {
+  IDebugLog,
+  ILayerStage,
   ScaleTypes,
   StyleScaleType,
 } from '@antv/l7-core';
-import { IParseDataItem } from '@antv/l7-source';
+import type { IParseDataItem } from '@antv/l7-source';
 import { lodashUtil } from '@antv/l7-utils';
 import { extent } from 'd3-array';
 import * as d3interpolate from 'd3-interpolate';
@@ -289,7 +290,19 @@ export default class FeatureScalePlugin implements ILayerPlugin {
     const cfg: IScale = {
       type,
     };
-    const values = data?.map((item) => item[field]) || [];
+    // quantile domain 需要根据ID 进行去重
+    let values = []
+    if (type === ScaleTypes.QUANTILE) {
+      // 根据 obejct 属性 _id 进行去重 
+      const idMap = new Map();
+      data?.forEach(obj => {
+        idMap.set(obj._id, obj[field]);
+      });
+      values = Array.from(idMap.values());
+    } else {
+      values = data?.map((item) => item[field]) || [];
+    }
+
     if (scaleOption?.domain) {
       cfg.domain = scaleOption?.domain;
     } else if (type === ScaleTypes.CAT || type === ScaleTypes.IDENTITY) {

@@ -7,11 +7,12 @@ import React, { useEffect } from 'react';
 export default () => {
   useEffect(() => {
     const symbol = {
-      source:'none',
-      target:'halfTriangle',
+      source:'classic',
+      target:'classic',
     };
     const scene = new Scene({
       id: 'map',
+    renderer: process.env.renderer,
       map: new GaodeMap({
         center: [ 120.15, 30.3 ],
         zoom: 5,
@@ -20,6 +21,7 @@ export default () => {
     });
     const scene2 = new Scene({
       id: 'map2',
+    renderer: process.env.renderer,
       map: new BaiduMap({
         center: [ 120.15, 30.3 ],
         zoom: 9,
@@ -45,34 +47,15 @@ export default () => {
                 ],
                 [
                   120.3401184082,
-                  30.321915039121
+                  30.321915039121 + 0.02 * 1,
                 ]
               ]
             }
-          },
-          // {
-          //   type: 'Feature',
-          //   properties: {},
-          //   geometry: {
-          //     type: 'LineString',
-          //     coordinates: [
-                
-              
-          //       [
-          //         120.3401184082,
-          //         30.321915039121
-          //       ],
-          //       [
-          //         120.1863098144,
-          //         30.321915039121
-          //       ],
-          //     ]
-          //   }
-          // }
+          }
         ]
       }
       )
-      .size(10)
+      .size(20)
       .shape('flowline')
       .color('#00f')
       .style({
@@ -102,7 +85,7 @@ export default () => {
                 ],
                 [
                   120.3401184082,
-                  30.321915039121
+                  30.321915039121 
                 ]
               ]
             }
@@ -142,9 +125,11 @@ export default () => {
       );
     scene.on('loaded', () => {
       scene.addLayer(lineLayer);
+      scene.startAnimate();
     });
     scene2.on('loaded', () => {
       scene2.addLayer(lineLayer2);
+      // scene.startAnimate();
     });
   }, []);
   return (

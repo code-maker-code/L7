@@ -1,4 +1,4 @@
-import { gl } from './gl';
+import type { gl } from './gl';
 
 export interface IBufferInitializationOptions {
   data:
@@ -24,6 +24,11 @@ export interface IBufferInitializationOptions {
    * UniformBuffer
    */
   isUBO?: boolean;
+
+  /**
+   * Used later in Spector.js.
+   */
+  label?: string;
 }
 
 export interface IBuffer {

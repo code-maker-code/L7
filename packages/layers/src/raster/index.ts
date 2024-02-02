@@ -1,6 +1,7 @@
 import BaseLayer from '../core/BaseLayer';
-import { IRasterLayerStyleOptions } from '../core/interface';
-import RasterModels, { RasterModelType } from './models/index';
+import type { IRasterLayerStyleOptions } from '../core/interface';
+import type { RasterModelType } from './models/index';
+import RasterModels from './models/index';
 export default class RaterLayer extends BaseLayer<IRasterLayerStyleOptions> {
   public type: string = 'RasterLayer';
   public async buildModels() {
@@ -24,9 +25,11 @@ export default class RaterLayer extends BaseLayer<IRasterLayerStyleOptions> {
     // 根据 source 的类型判断 model type
     const parserType = this.layerSource.getParserType();
     switch (parserType) {
-      case 'raster':
+      case 'raster' || 'ndi':
         return 'raster';
       case 'rasterRgb':
+        return 'rasterRgb';
+      case 'rgb':
         return 'rasterRgb';
       case 'image':
         return 'rasterTerrainRgb';

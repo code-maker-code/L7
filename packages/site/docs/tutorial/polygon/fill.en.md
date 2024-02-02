@@ -3,7 +3,7 @@ title: fill
 order: 0
 ---
 
-<embed src="@/docs/common/style.md"></embed>
+<embed src="@/docs/api/common/style.md"></embed>
 
 The simplest representation of a geometry layer on a map is a fill map, which fills a specified area with a specified color.
 
@@ -90,11 +90,11 @@ style({ opacity Linear: { enable: true, // true - false dir: 'in', // n - out },
 });
 ```
 
-[radial gradient in](/examples/polygon/fill#china_linear_in)
+[radial gradient in](/examples/polygon/fill#linear_in)
 
 <img width="60%" style="display: block;margin: 0 auto;" alt="面图层填充图" src="https://gw.alipayobjects.com/mdn/rms_816329/afts/img/A*XjT5T4cT_CYAAAAAAAAAAAAAARQnAQ">
 
-[radial gradient out](/examples/polygon/fill#china_linear_out)
+[radial gradient out](/examples/polygon/fill#linear_out)
 
 <img width="60%" style="display: block;margin: 0 auto;" alt="面图层填充图" src="https://gw.alipayobjects.com/mdn/rms_816329/afts/img/A*Ob62Q7JDpZ4AAAAAAAAAAAAAARQnAQ">
 

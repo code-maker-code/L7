@@ -1,13 +1,13 @@
-import { IAttribute, IAttributeInitializationOptions } from './IAttribute';
-import { IBuffer, IBufferInitializationOptions } from './IBuffer';
-import { IElements, IElementsInitializationOptions } from './IElements';
-import {
+import type { IAttribute, IAttributeInitializationOptions } from './IAttribute';
+import type { IBuffer, IBufferInitializationOptions } from './IBuffer';
+import type { IElements, IElementsInitializationOptions } from './IElements';
+import type {
   IFramebuffer,
   IFramebufferInitializationOptions,
 } from './IFramebuffer';
-import { IModel, IModelInitializationOptions } from './IModel';
-import { IPass } from './IMultiPassRenderer';
-import { ITexture2D, ITexture2DInitializationOptions } from './ITexture2D';
+import type { IModel, IModelInitializationOptions } from './IModel';
+import type { IPass } from './IMultiPassRenderer';
+import type { ITexture2D, ITexture2DInitializationOptions } from './ITexture2D';
 
 export interface IRenderConfig {
   /**
@@ -70,6 +70,10 @@ export interface IRendererService {
     framebuffer: IFramebuffer | null,
     drawCommands: () => void,
   ): void;
+  useFramebufferAsync(
+    framebuffer: IFramebuffer | null,
+    drawCommands: () => Promise<void>,
+  ): Promise<void>;
   getViewportSize(): { width: number; height: number };
   getContainer(): HTMLElement | null;
   getCanvas(): HTMLCanvasElement | null;
@@ -77,6 +81,7 @@ export interface IRendererService {
   getPointSizeRange(): Float32Array;
   viewport(size: { x: number; y: number; width: number; height: number }): void;
   readPixels(options: IReadPixelsOptions): Uint8Array;
+  readPixelsAsync(options: IReadPixelsOptions): Promise<Uint8Array>;
   setState(): void;
   setBaseState(): void;
   setCustomLayerDefaults(): void;
@@ -85,4 +90,5 @@ export interface IRendererService {
   destroy(): void;
   beginFrame(): void;
   endFrame(): void;
+  queryVerdorInfo(): string;
 }

@@ -1,12 +1,12 @@
-import {
+import type {
   IAnimateOption,
   IMapService,
   ITexture2D,
   StyleAttributeField,
   StyleAttributeOption,
 } from '@antv/l7-core';
-import { IColorRamp } from '@antv/l7-utils';
-import { anchorType } from '../utils/symbol-layout';
+import type { IColorRamp } from '@antv/l7-utils';
+import type { anchorType } from '../utils/symbol-layout';
 export enum lineStyleType {
   'solid' = 0.0,
   'dash' = 1.0,
@@ -22,7 +22,6 @@ export enum TextureBlend {
   NORMAL = 'normal',
   REPLACE = 'replace',
 }
-
 /**
  * 基础图层类型定义
  */
@@ -199,6 +198,10 @@ export interface IImageLayerStyleOptions extends IBaseLayerStyleOptions {
   clampHigh?: boolean;
   rampColors?: IColorRamp;
   colorTexture?: ITexture2D;
+  brightness?: number;
+  contrast?: number;
+  saturation ?: number;
+  gamma?: number;
 }
 
 export interface ICityBuildLayerStyleOptions {

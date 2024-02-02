@@ -5,15 +5,14 @@ import {
   SyncBailHook,
   SyncHook,
 } from '@antv/async-hook';
-import {
-  BlendType,
+import type {
   IActiveOption,
   IAnimateOption,
   IAttributeAndElements,
+  IBuffer,
   ICameraService,
   ICoordinateSystemService,
   IDataState,
-  IDebugLog,
   IDebugService,
   IEncodeFeature,
   IFontService,
@@ -28,7 +27,6 @@ import {
   ILayerPickService,
   ILayerPlugin,
   ILayerService,
-  ILayerStage,
   ILegend,
   ILegendClassificaItem,
   ILegendSegmentItem,
@@ -53,14 +51,19 @@ import {
   LegendItems,
   StyleAttributeField,
   StyleAttributeOption,
-  TYPES,
   Triangulation,
+} from '@antv/l7-core';
+import {
+  BlendType,
+  IDebugLog,
+  ILayerStage,
+  TYPES,
   lazyInject,
 } from '@antv/l7-core';
 import Source from '@antv/l7-source';
 import { encodePickingColor, lodashUtil } from '@antv/l7-utils';
 import { EventEmitter } from 'eventemitter3';
-import { Container } from 'inversify';
+import type { Container } from 'inversify';
 import { BlendTypes } from '../utils/blend';
 import {
   createMultiPassRenderer,
@@ -224,7 +227,6 @@ export default class BaseLayer<ChildLayerStyleOptions = {}>
 
   public enableDataEncodeStyles: string[] = [];
 
-  public enablg: string[] = [];
 
   /**
    * 待更新样式属性，在初始化阶段完成注册
@@ -247,6 +249,8 @@ export default class BaseLayer<ChildLayerStyleOptions = {}>
 
   // private pickingPassRender: IPass<'pixelPicking'>;
 
+  private uniformBuffers: IBuffer[] = [];
+
   constructor(config: Partial<ILayerConfig & ChildLayerStyleOptions> = {}) {
     super();
     this.name = config.name || this.id;
@@ -255,6 +259,9 @@ export default class BaseLayer<ChildLayerStyleOptions = {}>
   }
   public addMask(layer: ILayer): void {
     this.masks.push(layer);
+    this.updateLayerConfig({
+      maskLayers: this.masks,
+    });
     this.enableMask();
   }
 
@@ -263,6 +270,9 @@ export default class BaseLayer<ChildLayerStyleOptions = {}>
     if (layerIndex > -1) {
       this.masks.splice(layerIndex, 1);
     }
+    this.updateLayerConfig({
+      maskLayers: this.masks,
+    });
   }
 
   public disableMask(): void {
@@ -276,11 +286,19 @@ export default class BaseLayer<ChildLayerStyleOptions = {}>
       enableMask: true,
     });
   }
-  // 将废弃
+
+  /**
+   * 将废弃
+   * @deprecated
+   */
   public addMaskLayer(maskLayer: ILayer) {
     this.masks.push(maskLayer);
   }
-  // 将废弃
+
+  /**
+   * 将废弃
+   * @deprecated
+   */
   public removeMaskLayer(maskLayer: ILayer) {
     const layerIndex = this.masks.indexOf(maskLayer);
     if (layerIndex > -1) {
@@ -760,6 +778,8 @@ export default class BaseLayer<ChildLayerStyleOptions = {}>
     this.rendering = false;
   }
 
+  prerender() {}
+
   public render(options: Partial<IRenderOptions> = {}): ILayer {
     if (this.tileLayer) {
       // 瓦片图层执行单独的 render 渲染队列
@@ -1054,7 +1074,7 @@ export default class BaseLayer<ChildLayerStyleOptions = {}>
     }
 
     // destroy all UBOs
-    this.layerModel.uniformBuffers.forEach((buffer) => {
+    this.layerModel?.uniformBuffers.forEach((buffer) => {
       buffer.destroy();
     });
 
@@ -1265,6 +1285,7 @@ export default class BaseLayer<ChildLayerStyleOptions = {}>
       inject,
       triangulation,
       styleOption,
+      pickingEnabled = true,
       ...rest
     } = options;
     this.shaderModuleService.registerModule(moduleName, {
@@ -1281,6 +1302,15 @@ export default class BaseLayer<ChildLayerStyleOptions = {}>
           triangulation,
           styleOption,
         );
+
+      const uniformBuffers = [
+        ...this.layerModel.uniformBuffers,
+        ...this.rendererService.uniformBuffers,
+        this.getLayerUniformBuffer(),
+      ];
+      if (pickingEnabled) {
+        uniformBuffers.push(this.getPickingUniformBuffer());
+      }
       const modelOptions = {
         attributes,
         uniforms,
@@ -1288,10 +1318,7 @@ export default class BaseLayer<ChildLayerStyleOptions = {}>
         vs,
         elements,
         blend: BlendTypes[BlendType.normal],
-        uniformBuffers: [
-          ...this.layerModel.uniformBuffers,
-          ...this.rendererService.uniformBuffers,
-        ],
+        uniformBuffers,
         textures: this.layerModel.textures,
         ...rest,
       };
@@ -1385,6 +1412,7 @@ export default class BaseLayer<ChildLayerStyleOptions = {}>
           uniforms: this.layerModel.getUninforms(),
           blend: this.layerModel.getBlend(),
           stencil: this.layerModel.getStencil(options),
+          textures: this.layerModel.textures,
         },
         options?.ispick || false,
       );
@@ -1495,14 +1523,41 @@ export default class BaseLayer<ChildLayerStyleOptions = {}>
     }
     const autoRender = this.layerSource.getSourceCfg().autoRender;
     if (autoRender) {
-      this.reRender();
+      setTimeout(() => {
+        this.reRender();
+      }, 10);
     }
   };
 
   protected async initLayerModels() {
     this.models.forEach((model) => model.destroy());
     this.models = [];
+    this.uniformBuffers.forEach((buffer) => {
+      buffer.destroy();
+    });
+    this.uniformBuffers = [];
+    // Layer Uniform
+    const layerUniforms = this.rendererService.createBuffer({
+      data: new Float32Array(16 + 4).fill(0), // u_Mvp
+      isUBO: true,
+    });
+    this.uniformBuffers.push(layerUniforms);
+
+    // Picking Uniform
+    const pickingUniforms = this.rendererService.createBuffer({
+      data: new Float32Array(20).fill(0),
+      isUBO: true,
+    });
+    this.uniformBuffers.push(pickingUniforms);
+
     this.models = await this.layerModel.initModels();
+  }
+
+  getLayerUniformBuffer() {
+    return this.uniformBuffers[0];
+  }
+  getPickingUniformBuffer() {
+    return this.uniformBuffers[1];
   }
 
   protected reRender() {

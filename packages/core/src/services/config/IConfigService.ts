@@ -1,13 +1,12 @@
 // import Ajv from 'ajv';
-import { PositionName } from '../component/IControlService';
-import { ILayerAttributesOption, ILayerConfig } from '../layer/ILayerService';
-import { IMapWrapper } from '../map/IMapService';
-import { IRenderConfig } from '../renderer/IRendererService';
+import type { PositionName } from '../component/IControlService';
+import type { ILayerAttributesOption, ILayerConfig } from '../layer/ILayerService';
+import type { IMapWrapper } from '../map/IMapService';
+import type { IRenderConfig } from '../renderer/IRendererService';
 export interface ISceneConfig extends IRenderConfig {
   id: string | HTMLDivElement;
   canvas?: HTMLCanvasElement;
   gl?: any;
-  hasBaseMap?: boolean;
   map: IMapWrapper;
   logoPosition?: PositionName;
   logoVisible?: boolean;

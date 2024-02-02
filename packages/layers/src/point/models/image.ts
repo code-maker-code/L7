@@ -1,40 +1,53 @@
-import {
-  AttributeType,
-  gl,
+import type {
   IEncodeFeature,
   IModel,
   IModelUniform,
-  ITexture2D,
+  ITexture2D} from '@antv/l7-core';
+import {
+  AttributeType,
+  gl
 } from '@antv/l7-core';
 import BaseModel from '../../core/BaseModel';
-import { IPointLayerStyleOptions } from '../../core/interface';
+import { ShaderLocation } from '../../core/CommonStyleAttribute';
+import type { IPointLayerStyleOptions } from '../../core/interface';
 import { PointImageTriangulation } from '../../core/triangulation';
-import pointImageFrag from '../shaders/image_frag.glsl';
-import pointImageVert from '../shaders/image_vert.glsl';
+import pointImageFrag from '../shaders/image/image_frag.glsl';
+import pointImageVert from '../shaders/image/image_vert.glsl';
 export default class ImageModel extends BaseModel {
   private texture: ITexture2D;
-  public getUninforms(): IModelUniform {
-    const {
-      opacity = 1,
-      offsets = [0, 0],
-      raisingHeight = 0,
-      heightfixed = false,
-    } = this.layer.getLayerConfig() as IPointLayerStyleOptions;
 
+  public getUninforms(): IModelUniform {
     // ThreeJS 图层兼容
     if (this.rendererService.getDirty()) {
       this.texture.bind();
     }
+    const commonInfo = this.getCommonUniformsInfo();
+    const attributeInfo = this.getUniformsBufferInfo(this.getStyleAttribute());
+    this.updateStyleUnifoms();
 
     return {
+      ...commonInfo.uniformsOption,
+      ...attributeInfo.uniformsOption,
+    };
+  }
+
+  protected getCommonUniformsInfo(): { uniformsArray: number[]; uniformsLength: number; uniformsOption: { [key: string]: any; }; } {
+    const {
+      raisingHeight = 0,
+      heightfixed = false,
+    } = this.layer.getLayerConfig() as IPointLayerStyleOptions;
+
+    const commonOptions = {
+      u_textSize: [1024, this.iconService.canvasHeight || 128],
       u_raisingHeight: Number(raisingHeight),
       u_heightfixed: Number(heightfixed),
       u_texture: this.texture,
-      u_textSize: [1024, this.iconService.canvasHeight || 128],
-      // u_opacity: opacity,
-      // u_offsets: offsets,
-      ...this.getStyleAttribute(),
-    };
+    }
+
+    this.textures = [this.texture];
+
+    const commonBufferInfo = this.getUniformsBufferInfo(commonOptions);
+    return commonBufferInfo;
   }
 
   public async initModels(): Promise<IModel[]> {
@@ -49,6 +62,7 @@ export default class ImageModel extends BaseModel {
   }
 
   public async buildModels(): Promise<IModel[]> {
+    this.initUniformsBuffer();
     const model = await this.layer.buildLayerModel({
       moduleName: 'pointImage',
       vertexShader: pointImageVert,
@@ -58,9 +72,9 @@ export default class ImageModel extends BaseModel {
       depth: { enable: false },
       primitive: gl.POINTS,
     });
-
     return [model];
   }
+
   protected registerBuiltinAttributes() {
     // point layer size;
     this.styleAttributeService.registerStyleAttribute({
@@ -68,6 +82,7 @@ export default class ImageModel extends BaseModel {
       type: AttributeType.Attribute,
       descriptor: {
         name: 'a_Size',
+        shaderLocation: ShaderLocation.SIZE,
         buffer: {
           // give the WebGL driver a hint that this buffer may change
           usage: gl.DYNAMIC_DRAW,
@@ -82,12 +97,13 @@ export default class ImageModel extends BaseModel {
       },
     });
 
-    // point layer size;
+    // point layer uv;
     this.styleAttributeService.registerStyleAttribute({
       name: 'uv',
       type: AttributeType.Attribute,
       descriptor: {
         name: 'a_Uv',
+        shaderLocation: ShaderLocation.UV,
         buffer: {
           // give the WebGL driver a hint that this buffer may change
           usage: gl.DYNAMIC_DRAW,

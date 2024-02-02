@@ -4,16 +4,11 @@ import { inject, injectable } from 'inversify';
 import 'reflect-metadata';
 import { TYPES } from '../../types';
 import Clock from '../../utils/clock';
-import { IDebugService } from '../debug/IDebugService';
-import { IMapService } from '../map/IMapService';
-import { IRendererService } from '../renderer/IRendererService';
-import {
-  ILayer,
-  ILayerService,
-  LayerServiceEvent,
-  MaskOperation,
-  StencilType,
-} from './ILayerService';
+import type { IDebugService } from '../debug/IDebugService';
+import type { IMapService } from '../map/IMapService';
+import type { IRendererService } from '../renderer/IRendererService';
+import type { ILayer, ILayerService, LayerServiceEvent } from './ILayerService';
+import { MaskOperation, StencilType } from './ILayerService';
 const { throttle } = lodashUtil;
 @injectable()
 export default class LayerService
@@ -146,6 +141,11 @@ export default class LayerService
     this.alreadyInRendering = true;
     this.clear();
 
+    for (const layer of this.layerList) {
+      layer.prerender();
+    }
+
+    // The main render pass, all layers in a whole.
     this.renderService.beginFrame();
     for (const layer of this.layerList) {
       const { enableMask } = layer.getLayerConfig();
@@ -157,7 +157,7 @@ export default class LayerService
         // multiPassRender 不是同步渲染完成的
         await layer.renderMultiPass();
       } else {
-        await layer.render();
+        layer.render();
       }
     }
     this.renderService.endFrame();
@@ -215,7 +215,6 @@ export default class LayerService
     }
     // // 瓦片裁剪
     if (layer.tileMask) {
-      // TODO 示例瓦片掩膜多层支持
       layer.tileMask.render({
         isStencil: true,
         stencilType,

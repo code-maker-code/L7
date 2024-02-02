@@ -3,7 +3,7 @@ title: Style
 order: 4
 ---
 
-<embed src="@/docs/common/style.md"></embed>
+<embed src="@/docs/api/common/style.md"></embed>
 
 `style`The method is used to configure the style of the layer. The same layer has different`shape`graphics, different`shape`layer`style`Methods accept different parameters.
 
@@ -21,7 +21,7 @@ Universal`style`Parameters, parameters supported by all graphics.
 | ------- | -------- | -------------------- | ------------- |
 | opacity | `number` | Graphic transparency | `1`           |
 
-<embed src="@/docs/common/layer/style_encode.en.md"></embed>
+<embed src="@/docs/api/common/layer/style_encode.en.md"></embed>
 
 ### 2D shape
 
@@ -36,7 +36,7 @@ Universal`style`Parameters, parameters supported by all graphics.
 | strokeOpacity | `number`           | no                              | Graphic border transparency | `1`           |
 | blur          | `number`           | no                              | Graphic blur radius         | `0`           |
 | offsets       | `[number, number]` | yes                             | point offset                | `[0, 0]`      |
-| rotation      | `number`           | Rotation angle                  | yes                         | `0`           |
+| rotation      | `number`           | yes                  | Rotation angle                         | `0`           |
 | raisingHeight | `number`           | no                              | Lifting height              | `0`           |
 | heightfixed   | `boolean`          | no                              | Point size unit             | `pixel`       |
 

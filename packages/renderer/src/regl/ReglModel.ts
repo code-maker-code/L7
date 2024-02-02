@@ -3,8 +3,7 @@ import {
   preprocessShader_GLSL,
   ViewportOrigin,
 } from '@antv/g-device-api';
-import {
-  gl,
+import type {
   IAttribute,
   IBlendOptions,
   IElements,
@@ -12,10 +11,10 @@ import {
   IModelDrawOptions,
   IModelInitializationOptions,
   IUniform,
-  removeDuplicateUniforms,
 } from '@antv/l7-core';
+import { gl, removeDuplicateUniforms } from '@antv/l7-core';
 import { lodashUtil } from '@antv/l7-utils';
-import regl from 'regl';
+import type regl from 'regl';
 import {
   blendEquationMap,
   blendFuncMap,
@@ -25,10 +24,10 @@ import {
   stencilFuncMap,
   stencilOpMap,
 } from './constants';
-import ReglAttribute from './ReglAttribute';
-import ReglElements from './ReglElements';
-import ReglFramebuffer from './ReglFramebuffer';
-import ReglTexture2D from './ReglTexture2D';
+import type ReglAttribute from './ReglAttribute';
+import type ReglElements from './ReglElements';
+import type ReglFramebuffer from './ReglFramebuffer';
+import type ReglTexture2D from './ReglTexture2D';
 const { isPlainObject, isTypedArray } = lodashUtil;
 
 /**
@@ -87,15 +86,19 @@ export default class ReglModel implements IModel {
     Object.keys(attributes).forEach((name: string) => {
       reglAttributes[name] = (attributes[name] as ReglAttribute).get();
     });
+    const frag = removeDuplicateUniforms(
+      preprocessShader_GLSL(vendorInfo, 'frag', fs, null, false),
+    );
+
+    const vert = removeDuplicateUniforms(
+      preprocessShader_GLSL(vendorInfo, 'vert', vs, null, false),
+    );
+
     const drawParams: regl.DrawConfig = {
       attributes: reglAttributes,
-      frag: removeDuplicateUniforms(
-        preprocessShader_GLSL(vendorInfo, 'frag', fs, null, false),
-      ),
+      frag,
       uniforms: reglUniforms,
-      vert: removeDuplicateUniforms(
-        preprocessShader_GLSL(vendorInfo, 'vert', vs, null, false),
-      ),
+      vert,
       // @ts-ignore
       colorMask: reGl.prop('colorMask'),
       lineWidth: 1,

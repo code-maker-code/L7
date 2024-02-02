@@ -7,7 +7,7 @@ const scene = new Scene({
     style: 'dark',
     pitch: 50,
     center: [ 118.8, 32.056 ],
-    zoom: 10
+    zoom: 8
   })
 });
 const colors = [
@@ -38,7 +38,7 @@ scene.on('loaded', () => {
         .source(data)
         .shape('extrude')
         .color('unit_price', colors)
-        .size('unit_price', unit_price => unit_price * 50)
+        .size('unit_price')
         .style({
           opacity: {
             field: 'unit_price',

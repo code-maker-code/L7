@@ -1,5 +1,5 @@
-import { Container } from 'inversify';
-import { IViewport } from '../camera/ICameraService';
+import type { Container } from 'inversify';
+import type { IViewport } from '../camera/ICameraService';
 export type Point = [number, number];
 export type Bounds = [[number, number], [number, number]];
 export interface ILngLat {
@@ -38,7 +38,6 @@ export interface IMapWrapper {
     container: Container,
     id: string | HTMLDivElement,
     canvas?: HTMLCanvasElement,
-    hasBaseMap?: boolean,
   ): void;
 }
 

@@ -1,44 +1,44 @@
 // @ts-ignore
-import {
+import type {
   AsyncSeriesBailHook,
   AsyncWaterfallHook,
   SyncBailHook,
   SyncHook,
 } from '@antv/async-hook';
-import { IColorRamp, SourceTile, TilesetManager } from '@antv/l7-utils';
-import { Container } from 'inversify';
-import Clock from '../../utils/clock';
-import { ITextureService } from '../asset/ITextureService';
-import { ISceneConfig } from '../config/IConfigService';
-import { IInteractionTarget } from '../interaction/IInteractionService';
-import {
+import type { IColorRamp, SourceTile, TilesetManager } from '@antv/l7-utils';
+import type { Container } from 'inversify';
+import type Clock from '../../utils/clock';
+import type { ITextureService } from '../asset/ITextureService';
+import type { ISceneConfig } from '../config/IConfigService';
+import type { IInteractionTarget } from '../interaction/IInteractionService';
+import type {
   ILayerPickService,
   IPickingService,
 } from '../interaction/IPickingService';
-import { IMapService } from '../map/IMapService';
-import { IAttribute } from '../renderer/IAttribute';
-import { IBuffer } from '../renderer/IBuffer';
-import {
+import type { IMapService } from '../map/IMapService';
+import type { IAttribute } from '../renderer/IAttribute';
+import type { IBuffer } from '../renderer/IBuffer';
+import type {
   IBlendOptions,
   IModel,
   IModelInitializationOptions,
   IStencilOptions,
 } from '../renderer/IModel';
-import {
+import type {
   IMultiPassRenderer,
   IPass,
   IPostProcessingPass,
 } from '../renderer/IMultiPassRenderer';
-import { IRendererService } from '../renderer/IRendererService';
-import { ITexture2D } from '../renderer/ITexture2D';
-import { IUniform } from '../renderer/IUniform';
-import {
+import type { IRendererService } from '../renderer/IRendererService';
+import type { ITexture2D } from '../renderer/ITexture2D';
+import type { IUniform } from '../renderer/IUniform';
+import type {
   IParseDataItem,
   ISource,
   ISourceCFG,
   ITransform,
 } from '../source/ISourceService';
-import {
+import type {
   IAnimateOption,
   IEncodeFeature,
   IScale,
@@ -82,9 +82,13 @@ export interface ILayerModelInitializationOptions {
   vertexShader: string;
   fragmentShader: string;
   triangulation: Triangulation;
-  styleOption?: unknown,
+  styleOption?: unknown;
   workerEnabled?: boolean;
   workerOptions?: IWorkerOption;
+  /**
+   * When disabled, the picking uniform buffer will not be binded. Default to `true`.
+   */
+  pickingEnabled?: boolean;
 }
 
 export interface ILayerModel {
@@ -100,6 +104,8 @@ export interface ILayerModel {
   initModels(): Promise<IModel[]>;
   needUpdate(): Promise<boolean>;
   clearModels(refresh?: boolean): void;
+
+  prerender(): void;
   render(renderOptions?: Partial<IRenderOptions>): void;
 
   // canvasLayer
@@ -252,7 +258,7 @@ export interface IBaseTileLayerManager {
 }
 
 export interface ITilePickService {
-  pick(layer: ILayer, target: IInteractionTarget): boolean;
+  pick(layer: ILayer, target: IInteractionTarget): Promise<boolean>;
   pickRender(target: IInteractionTarget): void;
 }
 
@@ -499,6 +505,7 @@ export interface ILayer {
     passes?: Array<string | [string, { [key: string]: unknown }]>,
   ): ILayer;
   renderLayers(): void;
+  prerender(): void;
   render(options?: Partial<IRenderOptions>): ILayer;
 
   renderMultiPass(): any;
@@ -583,6 +590,16 @@ export interface ILayer {
 
   // 设置当前地球时间 控制太阳角度
   setEarthTime(time: number): void;
+
+  /**
+   * WebGL2 下更新 Layer 级 Uniform
+   */
+  getLayerUniformBuffer(): IBuffer;
+
+  /**
+   * WebGL2 下更新 Layer 级 Uniform
+   */
+  getPickingUniformBuffer(): IBuffer;
 }
 
 /**

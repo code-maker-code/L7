@@ -1,15 +1,16 @@
-import {
-  IDebugLog,
+import type {
   IEncodeFeature,
   IFontService,
   ILayer,
   ILayerPlugin,
-  ILayerStage,
   IMapService,
   IParseDataItem,
   IStyleAttribute,
   IStyleAttributeService,
-  Position,
+  Position} from '@antv/l7-core';
+import {
+  IDebugLog,
+  ILayerStage,
   TYPES,
 } from '@antv/l7-core';
 import { lodashUtil, normalize, rgb2arr } from '@antv/l7-utils';
@@ -118,9 +119,6 @@ export default class DataMappingPlugin implements ILayerPlugin {
 
     layer.setEncodedData(encodeData);
 
-    if (dataArray.length === 0 && layer.encodeDataLength === 0) {
-      return false;
-    }
     // 对外暴露事件
     layer.emit('dataUpdate', null);
     return true;

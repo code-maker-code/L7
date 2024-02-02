@@ -1,9 +1,15 @@
-precision highp float;
-uniform mat4 u_ModelMatrix;
+layout(location = 0) in vec3 a_Position;
+layout(location = 14) in vec2 a_Uv;
 
-attribute vec3 a_Position;
-attribute vec2 a_Uv;
-varying vec2 v_texCoord;
+layout(std140) uniform commonUniforms {
+    float u_opacity:1.0;
+    float u_brightness:1.0;
+    float u_contrast:1.0;
+    float u_saturation:1.0;
+    float u_gamma:1.0;
+};
+
+out vec2 v_texCoord;
 #pragma include "projection"
 void main() {
    v_texCoord = a_Uv;
